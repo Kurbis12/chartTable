@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Drag data plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-dragdata"></script>
+    <!-- Moment.js for handling time -->
+    <script src="https://cdn.jsdelivr.net/npm/moment"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment"></script>
+    <!-- Annotation plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/1.0.2/chartjs-plugin-annotation.js"></script>
+    <link rel="stylesheet" href="css/styles1.css">
+    <title>Draggable Plot Example</title>
+    <style>
+        canvas {
+            cursor: pointer;
+        }
+        
+        table {
+            margin-top: 20px;
+            border-collapse: collapse;
+            width: 100%;
+        }
+        
+        table,
+        th,
+        td {
+            border: 1px solid black;
+        }
+        
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="chart-container" style="position: relative; height:40vh; width:60vw">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <p>1. Click left mouse button to place data point in chart.</p>
+    <p>2. Click and Hold on data point in chart and move around data point.</p>
+    <p id="warn">2.1 Don't move mouse to quick around chart, data point can't read other data points.</p>
+    <p id="warn">So if selected data point is moved to fast it won't remove data points that is crossed.</p>
+    <p>3. Click Right mouse button to remove data point from chart.</p>
+
+    <table id="pointTable">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Value</th>
+                <th>Option</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><input type="text" id="new_time"></td>
+                <td><input type="text" id="new_value"></td>
+                <td><input type="text" id="new_status"></td>
+                <td><input type="button" class="add" onclick="add_row();" value="Add Row"></td>
+            </tr>
+        </tbody>
+    </table>
+
+
+
+    <script>
+        class DraggablePlotExample {
+            constructor() {
+                this.chart = null;
+                this.draggingPoint = null;
+                this.points = {};
+                this.initPlot();
+            }
+
+            initPlot() {
+                const ctx = document.getElementById('myChart');
+                this.chart = new Chart(ctx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Example plot',
+                            data: [],
+                            backgroundColor: 'blue',
+                            pointRadius: 10,
+                            pointHoverBackgroundColor: 'red',
+                            fill: false,
+                            pointHoverRadius: 5,
+                        }, {
+                            type: 'line',
+                            data: [],
+                            borderColor: 'blue',
+                            fill: false,
+                            borderWidth: 2,
+                            showLine: true,
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'hour',
+                                    displayFormats: {
+                                        hour: 'HH:mm'
+                                    }
+                                },
+                                position: 'bottom',
+                                min: moment().startOf('day'), // Start from the beginning of the day
+                                max: moment().endOf('day'), // End at the end of the day
+                            },
+                            y: {
+                                type: 'linear',
+                                position: 'left',
+                                min: 0,
+                                max: 100
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        animation: {
+                            duration: 0
+                        }
+                    }
+                });
+
+                ctx.onclick = (event) => this.onClick(event);
+                ctx.onmousemove = (event) => this._onMotion(event);
+                ctx.addEventListener('contextmenu', (event) => this.onRightClick(event));
+            }
+
+            updateTableFromPlot() {
+                const tableBody = $("#pointTable tbody");
+                tableBody.empty();
+
+                Object.keys(this.points).forEach((x) => {
+                    const y = this.points[x];
+                    const timestamp = parseFloat(x);
+
+                    const date = new Date(timestamp);
+                    const hours = date.getHours().toString().padStart(2, '0');
+                    const minutes = date.getMinutes().toString().padStart(2, '0');
+                    const goodTime = `${hours}:${minutes}`;
+
+                    const row = `<tr>
+                        <td>${goodTime}</td>
+                        <td>${Math.round(y)}</td>
+                        <td>
+                            <input type="button" class="edit" onclick="edit_row(${x})" value="Edit">
+                            <input type="button" class="save" onclick="save_row(${x})" value="Save">
+                            <input type="button" class="delete" onclick="delete_row(${x})" value="Delete">
+                        </td>
+                    </tr>`;
+                    tableBody.append(row);
+                });
+            }
+
+            updatePlot() {
+                const data = Object.keys(this.points).map(x => ({
+                    x: parseFloat(x),
+                    y: this.points[x]
+                }));
+                this.chart.data.datasets[0].data = data;
+
+                const lineData = data.slice().sort((a, b) => a.x - b.x);
+                this.chart.data.datasets[1].data = lineData;
+
+                this.chart.update();
+
+                this.updateTableFromPlot();
+            }
+
+            addPoint(x, y) {
+                this.points[x] = y;
+                return {
+                    x,
+                    y
+                };
+            }
+
+            removePoint(x, _) {
+                if (x in this.points) {
+                    delete this.points[x];
+                }
+            }
+
+            findNeighborPoint(event) {
+                const distanceThreshold = 20.0;
+                let nearestPoint = null;
+                let minDistance = Math.sqrt(2 * (100 ** 2));
+
+                for (const x in this.points) {
+                    const y = this.points[x];
+                    const distance = Math.hypot(event.x - this.chart.scales.x.getPixelForValue(x),
+                        event.y - this.chart.scales.y.getPixelForValue(y));
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestPoint = {
+                            x,
+                            y
+                        };
+                    }
+                }
+
+                return minDistance < distanceThreshold ? nearestPoint : null;
+            }
+
+            onClick(event) {
+                const xValue = this.chart.scales.x.getValueForPixel(event.x);
+                const yValue = this.chart.scales.y.getValueForPixel(event.y);
+                const point = this.addPoint(xValue, yValue);
+                this.draggingPoint = point;
+                this.updatePlot();
+            }
+
+            _onMotion(event) {
+                const x = this.chart.scales.x.getValueForPixel(event.clientX);
+                const y = this.chart.scales.y.getValueForPixel(event.clientY);
+
+                if (event.buttons === 1) {
+                    if (!this.draggingPoint) {
+                        const nearestPoint = this.findNeighborPoint(event);
+                        if (nearestPoint) {
+                            this.draggingPoint = nearestPoint;
+                        } else {
+                            this.draggingPoint = this.addPoint(x, y);
+                        }
+                    } else {
+                        this.removePoint(this.draggingPoint.x, this.draggingPoint.y);
+                        this.draggingPoint = this.addPoint(x, y);
+                    }
+                } else {
+                    this.draggingPoint = null;
+                }
+
+                this.updatePlot();
+            }
+
+            onRightClick(event) {
+                event.preventDefault();
+
+                const nearestPoint = this.findNeighborPoint(event);
+
+                if (nearestPoint) {
+                    this.removePoint(nearestPoint.x, nearestPoint.y);
+                    this.updatePlot();
+                }
+            }
+        }
+
+        const plot = new DraggablePlotExample();
+
+        // Table editing functions
+        function edit_row(no) {
+            var $row = $(`#row${no}`);
+            var timeCell = $row.find("td:eq(0)");
+            var valueCell = $row.find("td:eq(1)");
+            var statusCell = $row.find("td:eq(2)");
+
+            var time_data = timeCell.text().split(":");
+            var hours_value = time_data[0];
+            var minutes_value = time_data[1];
+
+            timeCell.html(
+                `<input type='number' id='hours_text${no}' value='${hours_value}' class='pointTimeHours' min='0' max='23' placeholder='HH' oninput='restrictInput(this, 0, 23); handleHourInput(this, document.getElementById("minutes_text${no}"))'>` +
+                `:<input type='number' id='minutes_text${no}' value='${minutes_value}' class='pointTimeMinutes' min='0' max='59' placeholder='mm' oninput='restrictInput(this, 0, 59);'>`
+            );
+            valueCell.html(`<input type='number' id='value_text${no}' value='${Math.round(valueCell.text())}' class='pointValue' min='0' max='100' placeholder='Value'>`);
+            // statusCell.html(
+            //     "<select id='status_text" + no + "'><option value='off' " + (statusCell.text() === 'off' ? 'selected' : '') + ">Off</option><option value='on' " + (statusCell.text() === 'on' ? 'selected' : '') + ">On</option></select>"
+            // );
+        }
+
+        function save_row(no) {
+            const time_val = $(`#row${no} td:eq(0) input`).val();
+            const value_val = $(`#row${no} td:eq(1) input`).val();
+            const status_val = $(`#row${no} td:eq(2) select`).val();
+
+            $(`#row${no} td:eq(0)`).html(time_val);
+            $(`#row${no} td:eq(1)`).html(Math.round(value_val));
+            $(`#row${no} td:eq(2)`).html(status_val);
+
+            $(`#edit_button${no}`).show();
+            $(`#save_button${no}`).hide();
+            plot.updateTableFromPlot();
+        }
+
+        function delete_row(no) {
+            $(`#row${no}`).remove();
+            plot.removePoint(no, null);
+            plot.updatePlot();
+        }
+
+        // Event delegation for dynamically added buttons
+        $("#pointTable").on('click', '.edit', function() {
+            var $row = $(this).closest("tr");
+            $row.find(".data").each(function() {
+                var content = $(this).text();
+                $(this).html('<input value="' + content + '" />');
+            });
+            $row.find('.save').show();
+            $row.find('.delete').hide();
+            $row.find('.edit').hide();
+        });
+
+        $("#pointTable").on('click', '.save', function() {
+            var $row = $(this).closest("tr");
+            $row.find('input').each(function() {
+                var content = $(this).val();
+                $(this).parent().text(content);
+            });
+            $row.find('.edit').show();
+            $row.find('.delete').show();
+            $row.find('.save').hide();
+        });
+
+        $("#pointTable").on('click', '.delete', function() {
+            $(this).closest('tr').remove();
+        });
+
+        $('.add').click(function() {
+            $(this).closest('table').find('tbody').append('<tr><td class="data"></td><td class="data"></td><td class="data"></td><td><button class="save">Save</button><button class="edit">Edit</button> <button class="delete">Delete</button></td></tr>');
+        });
+    </script>
+</body>
+
+</html>
