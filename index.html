@@ -4,11 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <title>Interactive Chart</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Drag data plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-dragdata"></script>
@@ -16,18 +12,18 @@
     <script src="https://cdn.jsdelivr.net/npm/moment"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment"></script>
     <!-- Annotation plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/1.0.2/chartjs-plugin-annotation.js"></script>
-    <link rel="stylesheet" href="styles1.css">
-    <title>Draggable Plot Example</title>
+    <link rel="stylesheet" href="css/styles1.css">
     <style>
         canvas {
             cursor: pointer;
         }
         
         table {
+            width: 60vw;
             margin-top: 20px;
             border-collapse: collapse;
-            width: 100%;
         }
         
         table,
@@ -45,37 +41,54 @@
 </head>
 
 <body>
+    <div class="container">
+        <div class="chart-container" style="position: relative; height:40vh; width:60vw">
+            <canvas id="myChart"></canvas>
+            <table id="data-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Table body will be populated dynamically -->
+                </tbody>
+            </table>
+            <button class="downloadbtn" id="downloadbtn" onclick="plot.downloadData()">Download Data</button>
+        </div>
 
-    <div class="chart-container" style="position: relative; height:40vh; width:60vw">
-        <canvas id="myChart"></canvas>
+
+        <div class="info-container">
+            <h1 class="mainHead">Instruction</h1>
+            <p class="head">How to Add data:</p>
+            <p>1. Place data point on chart.</br>
+                2. Place second data point and zoom out. </br>
+                3. Hold cursor in middle of data line so when zoom out it will stay more in middle.</br>
+            </p>
+            <p class="head"> How to Edit data:</p>
+            <p>1. Placed Data points can see in data table under chart.</p>
+            <p>2. Choose data value what you want to edit and click on it.</p>
+            <p>3. In window enter your value and press OK (press cancel to cancel editing process)</p>
+            <p>4. Editing time value you need to write E.g. 22:45 (colon need to be enter by user) </p>
+            <p>5. After edit is finish data will change in chart</p>
+
+            <p class="head"> How to Move data:</p>
+            <p>1. To move data in chart click and hold with left mouse button data point. </p>
+            <p>2. To finish moving data point let go left mmouse button. </p>
+
+            <p class="head">How to Remove data:</p>
+            <p>1. To remove data from chart click right mouse button on selected data point</p>
+            <p>2. Moving data point in normal speed so when selected data point reach other data point it will be removed automatically. </p>
+
+            <p class="head">How to Save data:</p>
+            <p>1. To save data that has been placed in chart press Download Data</p>
+            <p>2. Data will download on your device in jason file</p>
+
+        </div>
+
+
     </div>
-
-    <p>1. Click left mouse button to place data point in chart.</p>
-    <p>2. Click and Hold on data point in chart and move around data point.</p>
-    <p id="warn">2.1 Don't move mouse to quick around chart, data point can't read other data points.</p>
-    <p id="warn">So if selected data point is moved to fast it won't remove data points that is crossed.</p>
-    <p>3. Click Right mouse button to remove data point from chart.</p>
-
-    <table id="pointTable">
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>Value</th>
-                <th>Option</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><input type="text" id="new_time"></td>
-                <td><input type="text" id="new_value"></td>
-                <td><input type="text" id="new_status"></td>
-                <td><input type="button" class="add" onclick="add_row();" value="Add Row"></td>
-            </tr>
-        </tbody>
-    </table>
-
-
-
     <script>
         class DraggablePlotExample {
             constructor() {
@@ -83,6 +96,11 @@
                 this.draggingPoint = null;
                 this.points = {};
                 this.initPlot();
+            }
+
+            findPoint(time) {
+                const timestamp = time.valueOf();
+                return this.points[timestamp];
             }
 
             initPlot() {
@@ -94,7 +112,7 @@
                             label: 'Example plot',
                             data: [],
                             backgroundColor: 'blue',
-                            pointRadius: 10,
+                            pointRadius: 8,
                             pointHoverBackgroundColor: 'red',
                             fill: false,
                             pointHoverRadius: 5,
@@ -120,6 +138,7 @@
                                 position: 'bottom',
                                 min: moment().startOf('day'), // Start from the beginning of the day
                                 max: moment().endOf('day'), // End at the end of the day
+
                             },
                             y: {
                                 type: 'linear',
@@ -129,6 +148,32 @@
                             }
                         },
                         plugins: {
+                            zoom: {
+                                zoom: {
+                                    wheel: {
+                                        enabled: true
+                                    },
+                                    pinch: {
+                                        enabled: true
+                                    },
+                                    mode: 'xy',
+                                    onZoom: function({
+                                        chart
+                                    }) {
+                                        // Logic to adapt x-axis zoom level
+                                        const xAxis = chart.scales.x;
+                                        const zoomRange = xAxis.max - xAxis.min;
+
+                                        if (zoomRange < 60 * 60 * 1000) {
+                                            xAxis.time.unit = 'minute';
+                                            xAxis.time.stepSize = 30;
+                                        } else {
+                                            // xAxis.time.unit = 'hour';
+                                            // xAxis.time.stepSize = 1; 
+                                        }
+                                    }
+                                }
+                            },
                             legend: {
                                 display: false
                             }
@@ -139,35 +184,10 @@
                     }
                 });
 
+
                 ctx.onclick = (event) => this.onClick(event);
                 ctx.onmousemove = (event) => this._onMotion(event);
                 ctx.addEventListener('contextmenu', (event) => this.onRightClick(event));
-            }
-
-            updateTableFromPlot() {
-                const tableBody = $("#pointTable tbody");
-                tableBody.empty();
-
-                Object.keys(this.points).forEach((x) => {
-                    const y = this.points[x];
-                    const timestamp = parseFloat(x);
-
-                    const date = new Date(timestamp);
-                    const hours = date.getHours().toString().padStart(2, '0');
-                    const minutes = date.getMinutes().toString().padStart(2, '0');
-                    const goodTime = `${hours}:${minutes}`;
-
-                    const row = `<tr>
-                        <td>${goodTime}</td>
-                        <td>${Math.round(y)}</td>
-                        <td>
-                            <input type="button" class="edit" onclick="edit_row(${x})" value="Edit">
-                            <input type="button" class="save" onclick="save_row(${x})" value="Save">
-                            <input type="button" class="delete" onclick="delete_row(${x})" value="Delete">
-                        </td>
-                    </tr>`;
-                    tableBody.append(row);
-                });
             }
 
             updatePlot() {
@@ -181,12 +201,26 @@
                 this.chart.data.datasets[1].data = lineData;
 
                 this.chart.update();
-
-                this.updateTableFromPlot();
             }
 
             addPoint(x, y) {
-                this.points[x] = y;
+                // Make sure y is between 0 and 100
+                y = Math.min(100, Math.max(0, y));
+
+                // Make sure x is between 00:00 and 23:59
+                const minX = moment().startOf('day').valueOf();
+                const maxX = moment().endOf('day').valueOf();
+                x = Math.min(maxX, Math.max(minX, x));
+
+                // Check if the point already exists at the same x axel
+                if (this.points[x] !== undefined) {
+
+                    this.points[x] = y;
+                } else {
+                    // Add the new point
+                    this.points[x] = y;
+                }
+
                 return {
                     x,
                     y
@@ -220,17 +254,34 @@
                 return minDistance < distanceThreshold ? nearestPoint : null;
             }
 
+            formatTime(xValue) {
+                const timestamp = xValue;
+                const date = new Date(timestamp);
+
+                const hours = date.getHours().toString().padStart(2, '0');
+                const minutes = date.getMinutes().toString().padStart(2, '0');
+
+                return `${hours}:${minutes}`;
+            }
+
             onClick(event) {
                 const xValue = this.chart.scales.x.getValueForPixel(event.x);
                 const yValue = this.chart.scales.y.getValueForPixel(event.y);
                 const point = this.addPoint(xValue, yValue);
                 this.draggingPoint = point;
+
                 this.updatePlot();
+
+                const formattedTime = this.formatTime(xValue);
+                console.log('Formatted Time:', formattedTime);
             }
 
             _onMotion(event) {
                 const x = this.chart.scales.x.getValueForPixel(event.clientX);
-                const y = this.chart.scales.y.getValueForPixel(event.clientY);
+                let y = this.chart.scales.y.getValueForPixel(event.clientY);
+
+                // Set y to 0 if it goes below 0
+                y = Math.max(0, y);
 
                 if (event.buttons === 1) {
                     if (!this.draggingPoint) {
@@ -261,81 +312,120 @@
                     this.updatePlot();
                 }
             }
+            updateTable() {
+                const tableBody = document.getElementById('data-table').getElementsByTagName('tbody')[0];
+                tableBody.innerHTML = '';
+
+                for (const x in this.points) {
+                    const y = this.points[x];
+                    const roundedValue = Math.ceil(y); // Round up the value
+                    const formattedTime = this.formatTime(parseFloat(x));
+
+                    const row = tableBody.insertRow();
+                    const cell1 = row.insertCell(0);
+                    const cell2 = row.insertCell(1);
+                    cell1.textContent = formattedTime;
+                    cell2.textContent = roundedValue;
+
+                    // Using click to update value on cell 
+                    cell2.addEventListener('click', () => this.updateValue(x));
+
+                    // using click to update time on cell 
+                    cell1.addEventListener('click', () => this.updateTime(x));
+                }
+            }
+            updateValue(x) {
+                const currentValue = this.points[x];
+                const newValue = prompt(`Enter a new value for the selected point (current value: ${currentValue}):`);
+
+                if (newValue !== null && newValue !== '' && !isNaN(newValue)) {
+                    this.points[x] = parseFloat(newValue);
+                    this.updatePlot();
+                }
+            }
+
+            updateTime(x) {
+                const currentTimestamp = parseFloat(x);
+                const currentFormattedTime = this.formatTime(currentTimestamp);
+                const newFormattedTime = prompt(`Enter a new time for the selected point (current time: ${currentFormattedTime}):`);
+
+                if (newFormattedTime !== null && newFormattedTime !== '') {
+                    const newTimestamp = moment(newFormattedTime, 'HH:mm').valueOf();
+                    this.points[newTimestamp] = this.points[currentTimestamp];
+                    delete this.points[currentTimestamp];
+                    this.updatePlot();
+                }
+            }
+
+            updatePlot() {
+                const data = Object.keys(this.points).map(x => ({
+                    x: parseFloat(x),
+                    y: this.points[x]
+                }));
+
+                // y-axis limits (0 and 100)
+                const boundedData = data.map(point => ({
+                    x: point.x,
+                    y: Math.min(Math.max(point.y, 0), 100)
+                }));
+
+                this.chart.data.datasets[0].data = boundedData;
+
+                const lineData = boundedData.slice().sort((a, b) => a.x - b.x);
+                this.chart.data.datasets[1].data = lineData;
+
+                if (boundedData.length === 1) {
+                    // Automatically zoom in for the first point
+                    const xValue = boundedData[0].x;
+                    const yValue = boundedData[0].y;
+
+                    // Set up the zoom range for x-axis 
+                    const minX = xValue - 1 * 60 * 60 * 1000; // 1 hour before the point
+                    const maxX = xValue + 1 * 60 * 60 * 1000; // 1 hour after the point
+
+                    // Set up the zoom range for y-axis 
+                    const minY = Math.max(0, yValue - 10); // Ensure minY is not below 0
+                    const maxY = Math.min(100, yValue + 10); // Ensure maxY is not above 100
+
+                    this.chart.options.scales.x.min = minX;
+                    this.chart.options.scales.x.max = maxX;
+                    this.chart.options.scales.y.min = minY;
+                    this.chart.options.scales.y.max = maxY;
+                }
+
+                this.chart.update();
+                this.updateTable();
+            }
+
+            downloadData() {
+                const dataArray = Object.keys(this.points).map(timestamp => {
+                    const time = this.formatTime(parseFloat(timestamp));
+                    const value = Math.ceil(this.points[timestamp]);
+                    return {
+                        time,
+                        value
+                    };
+                });
+
+                // Sorts by the time in asc order
+                dataArray.sort((a, b) => a.time.localeCompare(b.time));
+
+                const jsonData = JSON.stringify(dataArray, null, 2);
+                const blob = new Blob([jsonData], {
+                    type: 'application/json'
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'data.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+
         }
 
         const plot = new DraggablePlotExample();
-
-        // Table editing functions
-        function edit_row(no) {
-            var $row = $(`#row${no}`);
-            var timeCell = $row.find("td:eq(0)");
-            var valueCell = $row.find("td:eq(1)");
-            var statusCell = $row.find("td:eq(2)");
-
-            var time_data = timeCell.text().split(":");
-            var hours_value = time_data[0];
-            var minutes_value = time_data[1];
-
-            timeCell.html(
-                `<input type='number' id='hours_text${no}' value='${hours_value}' class='pointTimeHours' min='0' max='23' placeholder='HH' oninput='restrictInput(this, 0, 23); handleHourInput(this, document.getElementById("minutes_text${no}"))'>` +
-                `:<input type='number' id='minutes_text${no}' value='${minutes_value}' class='pointTimeMinutes' min='0' max='59' placeholder='mm' oninput='restrictInput(this, 0, 59);'>`
-            );
-            valueCell.html(`<input type='number' id='value_text${no}' value='${Math.round(valueCell.text())}' class='pointValue' min='0' max='100' placeholder='Value'>`);
-            // statusCell.html(
-            //     "<select id='status_text" + no + "'><option value='off' " + (statusCell.text() === 'off' ? 'selected' : '') + ">Off</option><option value='on' " + (statusCell.text() === 'on' ? 'selected' : '') + ">On</option></select>"
-            // );
-        }
-
-        function save_row(no) {
-            const time_val = $(`#row${no} td:eq(0) input`).val();
-            const value_val = $(`#row${no} td:eq(1) input`).val();
-            const status_val = $(`#row${no} td:eq(2) select`).val();
-
-            $(`#row${no} td:eq(0)`).html(time_val);
-            $(`#row${no} td:eq(1)`).html(Math.round(value_val));
-            $(`#row${no} td:eq(2)`).html(status_val);
-
-            $(`#edit_button${no}`).show();
-            $(`#save_button${no}`).hide();
-            plot.updateTableFromPlot();
-        }
-
-        function delete_row(no) {
-            $(`#row${no}`).remove();
-            plot.removePoint(no, null);
-            plot.updatePlot();
-        }
-
-        // Event delegation for dynamically added buttons
-        $("#pointTable").on('click', '.edit', function() {
-            var $row = $(this).closest("tr");
-            $row.find(".data").each(function() {
-                var content = $(this).text();
-                $(this).html('<input value="' + content + '" />');
-            });
-            $row.find('.save').show();
-            $row.find('.delete').hide();
-            $row.find('.edit').hide();
-        });
-
-        $("#pointTable").on('click', '.save', function() {
-            var $row = $(this).closest("tr");
-            $row.find('input').each(function() {
-                var content = $(this).val();
-                $(this).parent().text(content);
-            });
-            $row.find('.edit').show();
-            $row.find('.delete').show();
-            $row.find('.save').hide();
-        });
-
-        $("#pointTable").on('click', '.delete', function() {
-            $(this).closest('tr').remove();
-        });
-
-        $('.add').click(function() {
-            $(this).closest('table').find('tbody').append('<tr><td class="data"></td><td class="data"></td><td class="data"></td><td><button class="save">Save</button><button class="edit">Edit</button> <button class="delete">Delete</button></td></tr>');
-        });
     </script>
 </body>
 
