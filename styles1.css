@@ -1,12 +1,65 @@
-/* #test {
+#warn {
     color: red;
 }
 
-#wrapper {
-    margin-top: 50px;
-    
-} */
+.downloadbtn {
+    margin-top: 25px;
+    background-color: RoyalBlue;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    padding: 12px 30px;
+    cursor: pointer;
+    font-size: 20px;
+}
 
-#warn {
-    color: red;
+.downloadbtn:hover {
+    background-color: rgb(37, 146, 79);
+}
+
+.chart-container {
+    display: inline-block;
+    vertical-align: top;
+    position: relative;
+    height: 40vh;
+    width: 60vw;
+}
+
+.info-container {
+    display: inline-block;
+    vertical-align: top;
+    width: 35vw;
+    padding: 10px;
+}
+
+.container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+table {
+    width: 60vw;
+    margin-top: 20px;
+    border-collapse: collapse;
+}
+
+table,
+th,
+td {
+    border: 1px solid black;
+}
+
+th,
+td {
+    padding: 8px;
+    text-align: left;
+}
+
+.mainHead {
+    text-align: center;
+}
+
+.head {
+    font-weight: bold;
 }
