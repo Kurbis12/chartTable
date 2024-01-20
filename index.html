@@ -12,19 +12,46 @@
     <script src="https://cdn.jsdelivr.net/npm/moment"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment"></script>
     <!-- Annotation plugin -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/1.0.2/chartjs-plugin-annotation.js"></script>
-    <link rel="stylesheet" href="styles1.css">
+    <link rel="stylesheet" href="css/styles1.css">
     <style>
         canvas {
             cursor: pointer;
         }
+        
+        .chart-container {
+            position: relative;
+            height: 40vh;
+            width: 45vw;
+            z-index: 2;
+        }
+        
+        table {
+            width: 45vw;
+            margin-top: 20px;
+            border-collapse: collapse;
+            position: relative;
+            z-index: 1;
+        }
+        
+        table,
+        th,
+        td {
+            border: 1px solid black;
+        }
+        
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
     </style>
 </head>
 
 <body>
     <div class="container">
-        <div class="chart-container" style="position: relative; height:40vh; width:60vw">
+        <div class="chart-container" style="position: relative; height:40vh; width:45vw">
             <canvas id="myChart"></canvas>
             <table id="data-table">
                 <thead>
@@ -118,44 +145,30 @@
                                     }
                                 },
                                 position: 'bottom',
-                                min: moment().startOf('day'), // Start from the beginning of the day
-                                max: moment().endOf('day'), // End at the end of the day
+                                min: moment().startOf('day'),
+                                max: moment().endOf('day'),
+                                ticks: {
+                                    major: {
+                                        enabled: true
+                                    },
+                                    maxRotation: 0,
+                                    autoSkipPadding: 75,
+                                    source: 'data',
+                                    autoSkip: true
+                                },
+                                afterBuildTicks: function(scale, ticks) {
 
+                                    return ticks;
+                                }
                             },
                             y: {
                                 type: 'linear',
                                 position: 'left',
                                 min: 0,
-                                max: 100
+                                max: 110
                             }
                         },
                         plugins: {
-                            zoom: {
-                                zoom: {
-                                    wheel: {
-                                        enabled: true
-                                    },
-                                    pinch: {
-                                        enabled: true
-                                    },
-                                    mode: 'xy',
-                                    onZoom: function({
-                                        chart
-                                    }) {
-                                        // Logic to adapt x-axis zoom level
-                                        const xAxis = chart.scales.x;
-                                        const zoomRange = xAxis.max - xAxis.min;
-
-                                        if (zoomRange < 60 * 60 * 1000) {
-                                            xAxis.time.unit = 'minute';
-                                            xAxis.time.stepSize = 30;
-                                        } else {
-                                            // xAxis.time.unit = 'hour';
-                                            // xAxis.time.stepSize = 1; 
-                                        }
-                                    }
-                                }
-                            },
                             legend: {
                                 display: false
                             }
@@ -165,7 +178,6 @@
                         }
                     }
                 });
-
 
                 ctx.onclick = (event) => this.onClick(event);
                 ctx.onmousemove = (event) => this._onMotion(event);
@@ -355,25 +367,6 @@
 
                 const lineData = boundedData.slice().sort((a, b) => a.x - b.x);
                 this.chart.data.datasets[1].data = lineData;
-
-                if (boundedData.length === 1) {
-                    // Automatically zoom in for the first point
-                    const xValue = boundedData[0].x;
-                    const yValue = boundedData[0].y;
-
-                    // Set up the zoom range for x-axis 
-                    const minX = xValue - 1 * 60 * 60 * 1000; // 1 hour before the point
-                    const maxX = xValue + 1 * 60 * 60 * 1000; // 1 hour after the point
-
-                    // Set up the zoom range for y-axis 
-                    const minY = Math.max(0, yValue - 10); // Ensure minY is not below 0
-                    const maxY = Math.min(100, yValue + 10); // Ensure maxY is not above 100
-
-                    this.chart.options.scales.x.min = minX;
-                    this.chart.options.scales.x.max = maxX;
-                    this.chart.options.scales.y.min = minY;
-                    this.chart.options.scales.y.max = maxY;
-                }
 
                 this.chart.update();
                 this.updateTable();
