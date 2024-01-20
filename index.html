@@ -296,41 +296,47 @@
                 }
             }
             updateTable() {
-                const tableBody = document.getElementById('data-table').getElementsByTagName('tbody')[0];
-                tableBody.innerHTML = '';
+    const tableBody = document.getElementById('data-table').getElementsByTagName('tbody')[0];
+    tableBody.innerHTML = '';
 
-                for (const x in this.points) {
-                    const y = this.points[x];
-                    const roundedValue = Math.ceil(y); // Round up the value
-                    const formattedTime = this.formatTime(parseFloat(x));
+    const sortedData = Object.keys(this.points)
+        .map(x => ({
+            x: parseFloat(x),
+            y: this.points[x]
+        }))
+        .sort((a, b) => a.x - b.x);
 
-                    const row = tableBody.insertRow();
-                    const cell1 = row.insertCell(0);
-                    const cell2 = row.insertCell(1);
-                    const cell3 = row.insertCell(2);
+    for (const point of sortedData) {
+        const roundedValue = Math.ceil(point.y); // Round up the value
+        const formattedTime = this.formatTime(point.x);
 
-                    cell1.textContent = formattedTime;
-                    cell2.textContent = roundedValue;
+        const row = tableBody.insertRow();
+        const cell1 = row.insertCell(0);
+        const cell2 = row.insertCell(1);
+        const cell3 = row.insertCell(2);
 
-                    // Using click to update value on cell 
-                    cell2.addEventListener('click', () => this.updateValue(x));
+        cell1.textContent = formattedTime;
+        cell2.textContent = roundedValue;
 
-                    // using click to update time on cell 
-                    cell1.addEventListener('click', () => this.updateTime(x));
+        // Using click to update value on cell 
+        cell2.addEventListener('click', () => this.updateValue(point.x));
 
-                    // Add delete button
-                    const deleteButton = document.createElement('button');
-                    deleteButton.textContent = 'Delete';
-                    deleteButton.style.width = '100%';
-                    deleteButton.style.height = '100%';
-                    deleteButton.style.color = 'white';
-                    deleteButton.style.borderRadius = '4px';
-                    deleteButton.style.backgroundColor = '		#e53030';
+        // using click to update time on cell 
+        cell1.addEventListener('click', () => this.updateTime(point.x));
 
-                    deleteButton.addEventListener('click', () => this.deleteRow(x));
-                    cell3.appendChild(deleteButton);
-                }
-            }
+        // Add delete button
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.style.width = '100%';
+        deleteButton.style.height = '100%';
+        deleteButton.style.color = 'white';
+        deleteButton.style.borderRadius = '4px';
+        deleteButton.style.backgroundColor = '	#e53030';
+
+        deleteButton.addEventListener('click', () => this.deleteRow(point.x));
+        cell3.appendChild(deleteButton);
+    }
+}
 
             deleteRow(x) {
                 delete this.points[x];
